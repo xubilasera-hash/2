@@ -1,0 +1,5 @@
+{
+  "name": "Identity Pro - Personal Portfolio & Admin",
+  "description": "A sophisticated personal identity website featuring a real-time admin dashboard for managing notices (PDFs), galleries (images), and core identity settings, powered by Supabase.",
+  "requestFramePermissions": []
+}
