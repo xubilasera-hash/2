@@ -1,17 +1,13 @@
 
-# Supabase Setup Guide
+# Definitive Supabase Setup Guide
 
-Follow these steps to connect this application to your Supabase project.
+To fix "Violates Row Level Security" errors, run this exact script in your Supabase SQL Editor.
 
-### 1. Create a Supabase Project
-Go to [supabase.com](https://supabase.com) and create a new project.
-
-### 2. Run Database SQL
-In your Supabase Dashboard, go to **SQL Editor** and paste the following:
+## 1. Database Tables & Permissions
 
 ```sql
--- Create Identity table
-create table identity (
+-- Create Tables if they don't exist
+create table if not exists identity (
   id uuid default gen_random_uuid() primary key,
   full_name text,
   title text,
@@ -23,16 +19,14 @@ create table identity (
   updated_at timestamp with time zone default now()
 );
 
--- Create Gallery table
-create table gallery (
+create table if not exists gallery (
   id uuid default gen_random_uuid() primary key,
   caption text,
   image_url text,
   created_at timestamp with time zone default now()
 );
 
--- Create Notices table
-create table notices (
+create table if not exists notices (
   id uuid default gen_random_uuid() primary key,
   title text,
   description text,
@@ -40,31 +34,41 @@ create table notices (
   created_at timestamp with time zone default now()
 );
 
--- Enable RLS (Optional, for public read access)
+-- Enable RLS
 alter table identity enable row level security;
 alter table gallery enable row level security;
 alter table notices enable row level security;
 
-create policy "Public Access" on identity for select using (true);
-create policy "Public Access" on gallery for select using (true);
-create policy "Public Access" on notices for select using (true);
+-- DROP existing policies to prevent conflicts
+drop policy if exists "Master Access" on identity;
+drop policy if exists "Master Access" on gallery;
+drop policy if exists "Master Access" on notices;
 
--- NOTE: For simple demo purposes, we're allowing all inserts/updates/deletes.
--- In production, you would restrict these to authenticated users only.
-create policy "All Access" on identity for all using (true);
-create policy "All Access" on gallery for all using (true);
-create policy "All Access" on notices for all using (true);
+-- Create ALL-ACCESS policies for easy management
+-- Note: In production, you would change 'true' to 'auth.role() = "authenticated"'
+create policy "Master Access" on identity for all using (true) with check (true);
+create policy "Master Access" on gallery for all using (true) with check (true);
+create policy "Master Access" on notices for all using (true) with check (true);
 ```
 
-### 3. Create Storage Buckets
-Go to **Storage** in Supabase and create 3 **Public** buckets:
-1. `identity`
-2. `gallery`
-3. `notices`
+## 2. Storage Setup (MANDATORY)
 
-Set the bucket policies to allow public access for reading and uploading (or adjust based on your security needs).
+1. Go to **Storage** in your Supabase Sidebar.
+2. Create 3 **Public** buckets: `identity`, `gallery`, and `notices`.
+3. Run this SQL to allow your website to upload files to these buckets:
 
-### 4. Link the Code
-1. Open the file `supabase.ts`.
-2. Find **Line 7** and replace `'YOUR_SUPABASE_PROJECT_URL'` with your project URL.
-3. Find **Line 8** and replace `'YOUR_SUPABASE_ANON_KEY'` with your project Anon Key.
+```sql
+-- Allow public access to the storage objects in your 3 buckets
+create policy "Public Storage Management"
+on storage.objects for all
+using ( bucket_id in ('identity', 'gallery', 'notices') )
+with check ( bucket_id in ('identity', 'gallery', 'notices') );
+```
+
+## 3. Verify
+After running the SQL:
+1. Upload a logo in **Admin > Identity**.
+2. Upload an image in **Admin > Gallery**.
+3. Upload a PDF in **Admin > Notices**.
+
+If you still see errors, double-check that your Bucket names in the Storage tab match exactly: `identity`, `gallery`, and `notices`.
